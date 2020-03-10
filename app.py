@@ -436,16 +436,13 @@ def create_artist_submission():
     image_link = request.form.get('image_link')
 
     artist = Artist(name=name, city=city, state=state, phone=phone, facebook_link=facebook_link, image_link=image_link, genres=genres)
-
-    #artist = Artist(name=name, city=city, state=state, phone=phone, genres=genres, facebook_link=facebook_link, image_link=image_link)
     db.session.add(artist)
     db.session.commit()
     # on successful db insert, flash success
     flash('Artist ' + request.form['name'] + ' was successfully listed!')
   except:
     # TODO-DONE: on unsuccessful db insert, flash an error instead.
-    print(sys.exc_info())
-    #flash('Artist ' + request.form['name'] + ' was NOT listed!')
+    flash('Artist ' + request.form['name'] + ' was NOT listed!')
     
     db.session.rollback()
   finally:
