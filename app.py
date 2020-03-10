@@ -104,27 +104,48 @@ def index():
 def venues():
   # TODO: replace with real venues data.
   #       num_shows should be aggregated based on number of upcoming shows per venue.
-  data=[{
-    "city": "San Francisco",
-    "state": "CA",
-    "venues": [{
-      "id": 1,
-      "name": "The Musical Hop",
-      "num_upcoming_shows": 0,
-    }, {
-      "id": 3,
-      "name": "Park Square Live Music & Coffee",
-      "num_upcoming_shows": 1,
-    }]
-  }, {
-    "city": "New York",
-    "state": "NY",
-    "venues": [{
-      "id": 2,
-      "name": "The Dueling Pianos Bar",
-      "num_upcoming_shows": 0,
-    }]
-  }]
+
+  # pain in the butt to figure out, but this query gets me the 'headers' for each city state breakdown to start our data up
+  query = db.session.query(Venue.city, Venue.state).distinct().order_by(Venue.city).order_by(Venue.state)
+
+  # lets start our new data array
+  data = []
+  # loop through combos of city state
+  for city_state_combo in query:
+
+    # set city state to variable for readibility in next query
+    distinct_city = city_state_combo.city
+    distinct_state = city_state_combo.state
+
+    # query venue table WHERE city and state match previous result
+    query2 = db.session.query(Venue).filter(Venue.city == distinct_city, Venue.state == distinct_state).all()
+
+    # start new empty venue object
+    venues = []
+
+    # loop through venues only found in city state match
+    for venue in query2:
+      # build new venue object and append to root venues object
+      venue = {
+        "id": venue.id,
+        "name": venue.name,
+        "num_upcoming_shows": 0
+      }
+
+
+      venues.append(venue)
+
+    # now we can build the root venue object using the city, state, and venues object we built previously
+
+    root_venue_object = {
+      "city": distinct_city,
+      "state": distinct_state,
+      "venues": venues
+    }
+    
+    # add each root object to the root data being passed to the template
+    data.append(root_venue_object)
+
   return render_template('pages/venues.html', areas=data);
 
 @app.route('/venues/search', methods=['POST'])
