@@ -42,7 +42,7 @@ class Venue(db.Model):
     website = db.Column(db.String())
     image_link = db.Column(db.String())
     facebook_link = db.Column(db.String())
-    seeking_talent = db.Column(db.Boolean())
+    seeking_talent = db.Column(db.Boolean(),default=False)
     seeking_description = db.Column(db.String())
 
     venue_shows = db.relationship('Show', cascade="all,delete", backref='venue', lazy=True)
@@ -59,7 +59,7 @@ class Artist(db.Model):
     genres = db.Column(db.String())
     image_link = db.Column(db.String())
     facebook_link = db.Column(db.String())
-    seeking_venue = db.Column(db.Boolean())
+    seeking_venue = db.Column(db.Boolean(),default=False)
     seeking_description = db.Column(db.String())
 
     artist_shows = db.relationship('Show', cascade="all,delete", backref='artist', lazy=True)
@@ -244,13 +244,14 @@ def create_venue_submission():
   seeking_talent = request.form.get('seeking_talent')
   seeking_description = request.form.get('seeking_description')
 
+  if seeking_talent == 'y':
+    seeking_talent = True
+  else:
+    seeking_talent = False
+
   venue = Venue(name=name, address=address, city=city, state=state, phone=phone, seeking_talent=seeking_talent, seeking_description=seeking_description, website=website, facebook_link=facebook_link, image_link=image_link, genres=genres)
   db.session.add(venue)
   db.session.commit()
-
-
-
-
 
   # TODO: modify data to be the data object returned from db insertion
 
