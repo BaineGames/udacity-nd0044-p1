@@ -45,6 +45,7 @@ class Venue(db.Model):
     seeking_talent = db.Column(db.Boolean(),default=False)
     seeking_description = db.Column(db.String())
 
+    # build the venue to show relationship
     venue_shows = db.relationship('Show', cascade="all,delete", backref='venue', lazy=True)
 
     # implement any missing fields, as a database migration using Flask-Migrate
@@ -62,12 +63,14 @@ class Artist(db.Model):
     seeking_venue = db.Column(db.Boolean(),default=False)
     seeking_description = db.Column(db.String())
 
+    # build the artist to show relationship
     artist_shows = db.relationship('Show', cascade="all,delete", backref='artist', lazy=True)
 
     # implement any missing fields, as a database migration using Flask-Migrate
 
 # Implement Show and Artist models, and complete all model relationships and properties, as a database migration.
 
+# build the show class with foreign keys on both artist and venue
 class Show(db.Model):
     __tablename__ = 'show'
     id = db.Column('id', db.Integer, primary_key=True)
@@ -98,7 +101,6 @@ app.jinja_env.filters['datetime'] = format_datetime
 @app.route('/')
 def index():
   return render_template('pages/home.html')
-
 
 #  Venues
 #  ----------------------------------------------------------------
@@ -134,12 +136,9 @@ def venues():
         "name": venue.name,
         "num_upcoming_shows": 0
       }
-
-
       venues.append(venue)
 
     # now we can build the root venue object using the city, state, and venues object we built previously
-
     root_venue_object = {
       "city": distinct_city,
       "state": distinct_state,
@@ -153,16 +152,17 @@ def venues():
 
 @app.route('/venues/search', methods=['POST'])
 def search_venues():
-  # TODO: implement search on artists with partial string search. Ensure it is case-insensitive.
+  # implement search on artists with partial string search. Ensure it is case-insensitive.
   # seach for Hop should return "The Musical Hop".
   # search for "Music" should return "The Musical Hop" and "Park Square Live Music & Coffee"
+  # build query using generic like - using ilike for insensitive case
+  venues = db.session.query(Venue).filter(Venue.name.ilike('%' + request.form.get('search_term') + '%')).all()
+  # get count of query for returned number
+  search_count = db.session.query(Venue).filter(Venue.name.ilike('%' + request.form.get('search_term') + '%')).count()
+  # build response object template is expecting
   response={
-    "count": 1,
-    "data": [{
-      "id": 2,
-      "name": "The Dueling Pianos Bar",
-      "num_upcoming_shows": 0,
-    }]
+    "count": search_count,
+    "data": venues
   }
   return render_template('pages/search_venues.html', results=response, search_term=request.form.get('search_term', ''))
 
@@ -216,7 +216,6 @@ def show_venue(venue_id):
     data['upcoming_shows'].append(upcoming_show)
 
   #sys.stdout.flush()   
-  
   return render_template('pages/show_venue.html', venue=data)
 
 #  Create Venue
@@ -230,36 +229,39 @@ def create_venue_form():
 @app.route('/venues/create', methods=['POST'])
 def create_venue_submission():
 
-  # TODO: insert form data as a new Venue record in the db, instead
+  try:
+    # insert form data as a new Venue record in the db, instead
+    name = request.form.get('name')
+    genres = request.form.getlist('genres')
+    address = request.form.get('address')
+    city = request.form.get('city')
+    state = request.form.get('state')
+    phone = request.form.get('phone')
+    website = request.form.get('website')
+    image_link = request.form.get('image_link')
+    facebook_link = request.form.get('facebook_link')
+    seeking_talent = request.form.get('seeking_talent')
+    seeking_description = request.form.get('seeking_description')
 
-  name = request.form.get('name')
-  genres = request.form.getlist('genres')
-  address = request.form.get('address')
-  city = request.form.get('city')
-  state = request.form.get('state')
-  phone = request.form.get('phone')
-  website = request.form.get('website')
-  image_link = request.form.get('image_link')
-  facebook_link = request.form.get('facebook_link')
-  seeking_talent = request.form.get('seeking_talent')
-  seeking_description = request.form.get('seeking_description')
+    # boolean check based on form input to set boolean value to true or false (db does have this default to false)
+    if seeking_talent == 'y':
+      seeking_talent = True
+    else:
+      seeking_talent = False
 
-  if seeking_talent == 'y':
-    seeking_talent = True
-  else:
-    seeking_talent = False
-
-  venue = Venue(name=name, address=address, city=city, state=state, phone=phone, seeking_talent=seeking_talent, seeking_description=seeking_description, website=website, facebook_link=facebook_link, image_link=image_link, genres=genres)
-  db.session.add(venue)
-  db.session.commit()
-
-  # TODO: modify data to be the data object returned from db insertion
-
-  # on successful db insert, flash success
-  flash('Venue ' + request.form['name'] + ' was successfully listed!')
-  # TODO: on unsuccessful db insert, flash an error instead.
-  # e.g., flash('An error occurred. Venue ' + data.name + ' could not be listed.')
-  # see: http://flask.pocoo.org/docs/1.0/patterns/flashing/
+    # build the actual venue item and commit it
+    venue = Venue(name=name, address=address, city=city, state=state, phone=phone, seeking_talent=seeking_talent, seeking_description=seeking_description, website=website, facebook_link=facebook_link, image_link=image_link, genres=genres)
+    db.session.add(venue)
+    db.session.commit()
+    # on successful db insert, flash success
+    flash('Venue ' + request.form['name'] + ' was successfully listed!')
+  except:
+     # on unsuccessful db insert, flash an error instead.
+    flash('Venue ' + request.form['name'] + ' was NOT listed!')
+    db.session.rollback()
+  finally:
+    db.session.close()
+  # modify data to be the data object returned from db insertion
   return render_template('pages/home.html')
 
 @app.route('/venues/<venue_id>', methods=['DELETE'])
@@ -275,7 +277,7 @@ def delete_venue(venue_id):
 #  ----------------------------------------------------------------
 @app.route('/artists')
 def artists():
-  # TODO-DONE: replace with real data returned from querying the database
+  # replace with real data returned from querying the database
   artists = Artist.query.all()
 
   return render_template('pages/artists.html', artists=artists)
@@ -285,13 +287,14 @@ def search_artists():
   # TODO: implement search on artists with partial string search. Ensure it is case-insensitive.
   # seach for "A" should return "Guns N Petals", "Matt Quevado", and "The Wild Sax Band".
   # search for "band" should return "The Wild Sax Band".
+  # build query using generic like - using ilike for insensitive case
+  artists = db.session.query(Artist).filter(Artist.name.ilike('%' + request.form.get('search_term') + '%')).all()
+  # get count of query for returned number
+  search_count = db.session.query(Artist).filter(Artist.name.ilike('%' + request.form.get('search_term') + '%')).count()
+  # build response object template is expecting
   response={
-    "count": 1,
-    "data": [{
-      "id": 4,
-      "name": "Guns N Petals",
-      "num_upcoming_shows": 0,
-    }]
+    "count": search_count,
+    "data": artists
   }
   return render_template('pages/search_artists.html', results=response, search_term=request.form.get('search_term', ''))
 
@@ -306,7 +309,7 @@ def create_artist_form():
 @app.route('/artists/create', methods=['POST'])
 def create_artist_submission():
   # called upon submitting the new artist listing form
-  # TODO: insert form data as a new Venue record in the db, instead
+  # insert form data as a new Venue record in the db, instead
   try:
     name = request.form.get('name')
     city = request.form.get('city')
@@ -336,7 +339,7 @@ def create_artist_submission():
     db.session.rollback()
   finally:
     db.session.close()
-  # TODO: modify data to be the data object returned from db insertion
+  # modify data to be the data object returned from db insertion
   return render_template('pages/home.html')
 
 
@@ -399,19 +402,9 @@ def show_artist(artist_id):
 @app.route('/artists/<int:artist_id>/edit', methods=['GET'])
 def edit_artist(artist_id):
   form = ArtistForm()
-  artist={
-    "id": 4,
-    "name": "Guns N Petals",
-    "genres": ["Rock n Roll"],
-    "city": "San Francisco",
-    "state": "CA",
-    "phone": "326-123-5000",
-    "website": "https://www.gunsnpetalsband.com",
-    "facebook_link": "https://www.facebook.com/GunsNPetals",
-    "seeking_venue": True,
-    "seeking_description": "Looking for shows to perform at in the San Francisco Bay Area!",
-    "image_link": "https://images.unsplash.com/photo-1549213783-8284d0336c4f?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=300&q=80"
-  }
+
+  artist = db.session.query(Artist).get(artist_id)
+
   # TODO: populate form with fields from artist with ID <artist_id>
   return render_template('forms/edit_artist.html', form=form, artist=artist)
 
@@ -425,20 +418,9 @@ def edit_artist_submission(artist_id):
 @app.route('/venues/<int:venue_id>/edit', methods=['GET'])
 def edit_venue(venue_id):
   form = VenueForm()
-  venue={
-    "id": 1,
-    "name": "The Musical Hop",
-    "genres": ["Jazz", "Reggae", "Swing", "Classical", "Folk"],
-    "address": "1015 Folsom Street",
-    "city": "San Francisco",
-    "state": "CA",
-    "phone": "123-123-1234",
-    "website": "https://www.themusicalhop.com",
-    "facebook_link": "https://www.facebook.com/TheMusicalHop",
-    "seeking_talent": True,
-    "seeking_description": "We are on the lookout for a local artist to play every two weeks. Please call us.",
-    "image_link": "https://images.unsplash.com/photo-1543900694-133f37abaaa5?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=400&q=60"
-  }
+
+  venue = db.session.query(Venue).get(venue_id)
+  
   # TODO: populate form with values from venue with ID <venue_id>
   return render_template('forms/edit_venue.html', form=form, venue=venue)
 
@@ -474,7 +456,7 @@ def shows():
       "start_time": str(show.start_time)
     }
     data.append(show)
-    
+
   return render_template('pages/shows.html', shows=data)
 
 @app.route('/shows/create')
