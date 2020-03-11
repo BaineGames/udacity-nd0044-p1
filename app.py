@@ -315,8 +315,16 @@ def create_artist_submission():
     genres = request.form.getlist('genres')
     facebook_link = request.form.get('facebook_link')
     image_link = request.form.get('image_link')
+    website = request.form.get('website')
+    seeking_venue = request.form.get('seeking_venue')
+    seeking_description = request.form.get('seeking_description')
 
-    artist = Artist(name=name, city=city, state=state, phone=phone, facebook_link=facebook_link, image_link=image_link, genres=genres)
+    if seeking_venue == 'y':
+      seeking_venue = True
+    else:
+      seeking_venue = False
+
+    artist = Artist(name=name, city=city, state=state, phone=phone, facebook_link=facebook_link, image_link=image_link, genres=genres, website=website, seeking_venue=seeking_venue, seeking_description=seeking_description)
     db.session.add(artist)
     db.session.commit()
     # on successful db insert, flash success
@@ -380,7 +388,7 @@ def show_artist(artist_id):
   # loop through upcoming shows and cast the timestamps as strings
   for upcoming_show in upcoming_shows:
     upcoming_show.start_time = str(upcoming_show.start_time)
-    upcoming_show.venue_image_link = db.session.query(Venue).get(past_show.venue_id).image_link
+    upcoming_show.venue_image_link = db.session.query(Venue).get(upcoming_show.venue_id).image_link
     data['upcoming_shows'].append(upcoming_show)
 
   sys.stdout.flush()   
@@ -459,14 +467,14 @@ def shows():
   for show in query:
     show = {
       "venue_id": show.venue_id,
-      "venue_name": [r.name for r in db.session.query(Venue.name).filter(Venue.id == show.venue_id).all()][0],
+      "venue_name": db.session.query(Venue).get(show.venue_id).name,
       "artist_id": show.artist_id,
-      "artist_name": [r.name for r in db.session.query(Artist.name).filter(Artist.id == show.artist_id).all()][0],
-      "artist_image_link": "https://images.unsplash.com/photo-1549213783-8284d0336c4f?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=300&q=80",
+      "artist_name": db.session.query(Artist).get(show.artist_id).name,
+      "artist_image_link": db.session.query(Artist).get(show.artist_id).image_link,
       "start_time": str(show.start_time)
     }
     data.append(show)
-
+    
   return render_template('pages/shows.html', shows=data)
 
 @app.route('/shows/create')
