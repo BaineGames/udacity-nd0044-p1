@@ -394,7 +394,7 @@ def show_artist(artist_id):
     upcoming_show.venue_image_link = db.session.query(Venue).get(upcoming_show.venue_id).image_link
     data['upcoming_shows'].append(upcoming_show)
 
-  sys.stdout.flush()   
+  #sys.stdout.flush()   
   return render_template('pages/show_artist.html', artist=data)
 
 #  Update
