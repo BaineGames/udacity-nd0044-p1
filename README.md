@@ -119,7 +119,7 @@ First, [install Flask](http://flask.pocoo.org/docs/1.0/installation/#install-fla
   $ sudo pip3 install Flask
   ```
 
-To start and run the local development server,
+To start and run the local development server, make sure you have postgres on with a database named fyuur. Update the credentials in config.py with the username and password string to use or use postgres:password assuming your local postgres has that user password set.
 
 1. Initialize and activate a virtualenv:
   ```
@@ -135,9 +135,7 @@ To start and run the local development server,
 
 3. Run the development server:
   ```
-  $ export FLASK_APP=myapp
-  $ export FLASK_ENV=development # enables debug mode
-  $ python3 app.py
+  $ export FLASK_APP=app.py FLASK_ENV=development flask run
   ```
 
 4. Navigate to Home page [http://localhost:5000](http://localhost:5000)
